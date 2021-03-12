@@ -1,0 +1,128 @@
+export FROM_CH_HOST=${SOURCE_CH_HOST:-clickhouse02.22ent.local}
+export FROM_CH_PORT=${SOURCE_CH_PORT:-9000}
+export FROM_CH_USER=${SOURCE_CH_USER:-amalinovsky}
+export FROM_CH_PASS=${SOURCE_CH_PASS:-2pz5g83tH77R466TtOo246xNjF082q32}
+export FROM_CH_DB=${SOURSE_CH_DB:-ai}
+
+export TO_CH_HOST=${DEST_CH_HOST:-clickhouse02.22ent.local}
+export TO_CH_PORT=${DEST_CH_PORT:-9000}
+export TO_CH_USER=${DEST_CH_USER:-amalinovsky}
+export TO_CH_PASS=${DEST_CH_PASS:-2pz5g83tH77R466TtOo246xNjF082q32}
+export TO_CH_DB=${DEST_CH_DB:-ai}
+
+# variables to string
+connection_string="'$FROM_CH_HOST:$FROM_CH_PORT'"
+db="'$FROM_CH_DB'"
+user="'$FROM_CH_USER'"
+password="'$FROM_CH_PASS'"
+
+clickhouse-client \
+    --host $TO_CH_HOST \
+    --port $TO_CH_PORT \
+    --user $TO_CH_USER \
+    --password $TO_CH_PASS \
+    --database $TO_CH_DB \
+    --multiline \
+    --multiquery \
+    --stacktrace \
+    --query="
+      	INSERT INTO
+      		test_app_clickstream
+		SELECT
+			event_date
+			, instance_id
+			, party_id
+			, user_id
+			, user_type
+			, realm
+			, event_type
+			, event_data
+			, screen_id
+			, device_type
+			, platform
+			, app_version
+			, device_data
+			, items
+			, ip
+			, event_date_ms
+		FROM
+			remote($connection_string, $db, 'app_clickstream', $user, $password)
+		WHERE
+			event_date BETWEEN today() - INTERVAL'1'DAY AND today()
+		;
+		TRUNCATE TABLE
+			products
+		;
+		INSERT INTO
+			products
+		SELECT
+			created_at
+			, updated_at
+			, deleted_at
+			, title
+			, description
+			, category_id
+			, app_name
+			, owner_user_id
+			, shop_id
+			, url
+			, product_id
+			, variant_id
+			, property
+		FROM
+			remote($connection_string, $db, 'products', $user, $password)
+    ";
+
+clickhouse-client \
+	--host clickhouse02.22ent.local \
+	--port 9000 \
+	--user amalinovsky \
+	--password 2pz5g83tH77R466TtOo246xNjF082q32 \
+	--multiquery \
+	--database dev \
+	--query "INSERT INTO symptoms FORMAT CSV" < symptoms.csv
+
+clickhouse-client \
+	--host clickhouse02.22ent.local \
+	--multiline \
+	--database prod_clone \
+	--format JSONEachRow \
+    --query "
+    SELECT
+        checkout.store
+        , replaceOne(itemDetails.screen_id, '/videos/', '') AS video_id
+        , arrayJoin(items) AS product_id
+        , (checkout.event_date - itemDetails.event_date) AS event_date_diff
+        , checkout.user_id
+        , checkout.x_app_instance_id
+        , checkout.event_date AS event_date_checkout
+        , checkout.event_data AS checkout_details
+    FROM
+        (
+            SELECT event_date, screen_id, user_id, x_app_instance_id
+            FROM dev.app_clickstream
+            WHERE event_type IN ('openProductDetails', 'itemDetailsOpened')
+              AND screen_id LIKE '/videos/%'
+              AND toDate(event_date) = today() - INTERVAL'1'DAY
+        ) AS itemDetails
+    INNER JOIN
+        (
+            SELECT
+                CASE
+                    WHEN x_perfectart_store_id = 'de302e0d-7eef-4326-8a64-59ebce8037f6' THEN 'Fashion'
+                    WHEN x_perfectart_store_id = '1dbf13e4-a02c-425e-8745-a9ebedb932c2' THEN 'Hardware'
+                    WHEN x_perfectart_store_id = 'bc4497d4-6140-4700-bd62-c3ec6f752981' THEN 'Gallery'
+                 END AS store
+                , items
+                , event_date
+                  , event_data
+                  , user_id
+                  , x_app_instance_id
+              FROM dev.app_clickstream
+              WHERE event_type IN ('basketCheckout', 'checkout')
+                AND toDate(event_date) = today() - INTERVAL'1'DAY
+          ) AS checkout
+          ON itemDetails.x_app_instance_id = checkout.x_app_instance_id
+      WHERE
+        event_date_diff BETWEEN 0 AND 1800
+    " > video2purchase.json

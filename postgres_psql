@@ -1,0 +1,34 @@
+sudo -u postgres \
+	psql \
+	--dbname=store \
+	--host=postgres-cn01.22ent.local \
+	--port=5432 \
+	--command="COPY video2purchase FROM 'video2purchase.json'" < video2purchase.json
+sed -i '' 's/\$//g' products.json
+
+
+psql "postgres://amalinovsky@postgres-cn01.22ent.local:5432,postgres-cn02.22ent.local:5432/store?target_session_attrs=read-write&sslmode=disable"
+
+
+export PGPASSWORD=4GKQs2
+psql \
+	--dbname=store \
+	--port=5432 \
+	--host=postgres-cn01.22ent.local,postgres-cn02.22ent.local \
+	--username=amalinovsky \
+	--command="COPY report.video2purchase FROM STDIN " < /Users/AlekseiMalinovsky/Downloads/ans.json
+
+
+export PGPASSWORD=LZx5
+psql \
+	--port=30164 \
+	--host=10.5.2.177 \
+	--username=postgres \
+	--command="COPY ts_mvz_history FROM STDIN WITH (FORMAT CSV, FORCE_NULL (ut), HEADER TRUE)" < /Users/AlekseiMalinovsky/Downloads/TS_MVZ_HISTORY/TS_MVZ_HISTORY.csv
+
+psql \
+	--port=30164 \
+	--host=10.5.2.177 \
+	--username=postgres \
+	--command="COPY ts_mvz_history_clean FROM STDIN WITH (FORMAT CSV, FORCE_NULL (ut), HEADER TRUE)" < /Users/AlekseiMalinovsky/Downloads/TS_MVZ_HISTORY/TS_MVZ_HISTORY_CLEAN.csv
+
