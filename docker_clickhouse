@@ -1,0 +1,7 @@
+docker run \
+	--detach \
+	--name test-clickhouse-server \
+	--ulimit nofile=262144:262144 \
+	--volume=$HOME/some_clickhouse_database:/var/lib/clickhouse \
+	--publish 8123:8123 \
+	--publish 9000:9000 yandex/clickhouse-server

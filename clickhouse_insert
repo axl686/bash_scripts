@@ -1,13 +1,13 @@
 export FROM_CH_HOST=${SOURCE_CH_HOST:-clickhouse02.22ent.local}
 export FROM_CH_PORT=${SOURCE_CH_PORT:-9000}
 export FROM_CH_USER=${SOURCE_CH_USER:-amalinovsky}
-export FROM_CH_PASS=${SOURCE_CH_PASS:-2pz5g83tH77R466TtOo246xNjF082q32}
+export FROM_CH_PASS=${SOURCE_CH_PASS:-2pz5g83tH77R466TtOo246}
 export FROM_CH_DB=${SOURSE_CH_DB:-ai}
 
 export TO_CH_HOST=${DEST_CH_HOST:-clickhouse02.22ent.local}
 export TO_CH_PORT=${DEST_CH_PORT:-9000}
 export TO_CH_USER=${DEST_CH_USER:-amalinovsky}
-export TO_CH_PASS=${DEST_CH_PASS:-2pz5g83tH77R466TtOo246xNjF082q32}
+export TO_CH_PASS=${DEST_CH_PASS:-2pz5g83tH77}
 export TO_CH_DB=${DEST_CH_DB:-ai}
 
 # variables to string
@@ -26,8 +26,8 @@ clickhouse-client \
     --multiquery \
     --stacktrace \
     --query="
-      	INSERT INTO
-      		test_app_clickstream
+    INSERT INTO
+      test_app_clickstream
 		SELECT
 			event_date
 			, instance_id
